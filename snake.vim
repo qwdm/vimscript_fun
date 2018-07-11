@@ -6,11 +6,18 @@ let HEIGHT = 20
 let WIDTH  = 40
 let BORDER = '#'
 let SNAKE  = '0'
-let INIT_LEN = 13
+let RABBIT = '*'
+let INIT_LEN = 7
+let GROW_RATE = 5
 
 " SNAKE
 let snake = []
 let direction = 'right'
+let to_grow = 0
+
+" RABBIT
+let rabbit = [HEIGHT/4, WIDTH/3]
+
 
 function FillSpaces()
     normal! gg
@@ -51,6 +58,18 @@ function PutCh(line, column, char)
 
 endfunction
 
+"""""""""""""""""""""""""""""""""""
+"" RANDOM
+"""""""""""""""""""""""""""""""""""
+
+let random = localtime() % 997
+
+function Random()
+    let g:random = (171 * g:random) % 30269
+    return g:random
+endfunction
+""""""""""""""""""""""""""""""""""
+
 
 """ snake """
 
@@ -58,12 +77,16 @@ function SnakeInit()
     for i in range(g:INIT_LEN)
         call add(g:snake, [g:HEIGHT/2, g:WIDTH/2 - i]) 
     endfor
+
+    call SnakeDraw()
 endfunction
 
 function SnakeMove()
 
     let head = g:snake[0]
     let new_head = copy(head)
+
+    let state = 'default'
     
     if g:direction == 'right'
         let new_head[1] += 1
@@ -78,7 +101,26 @@ function SnakeMove()
     let new_head[0] = (new_head[0] + g:HEIGHT) % g:HEIGHT
     let new_head[1] = (new_head[1] + g:WIDTH)  % g:WIDTH
 
-    let g:snake = [new_head] + g:snake[:len(g:snake)-2]
+    let under_head_char = GetCh(new_head[0], new_head[1])
+
+    if under_head_char == g:BORDER || under_head_char == g:SNAKE
+        let state = 'gameover'
+        return state
+    elseif under_head_char == g:RABBIT
+        let state = 'rabbit'
+        let g:to_grow += g:GROW_RATE
+    endif
+
+    if g:to_grow == 0
+        let cut = 2
+    else
+        let cut = 1
+        let g:to_grow -= 1
+    endif
+
+    let g:snake = [new_head] + g:snake[:len(g:snake) - cut]
+
+    return state
 
 endfunction
 
@@ -88,19 +130,60 @@ function SnakeDraw()
     endfor
 endfunction
 
-function! MainLoop(timer)
+function MainLoop(timer)
+    let timer = a:timer 
+     
     call FillSpaces()
+
     call DrawBorder()
-    call SnakeMove()
     call SnakeDraw()
+    call RabbitDraw()
+
+    let state = SnakeMove()
+
+    if state == 'gameover'
+        call timer_stop(timer)
+    elseif state == 'rabbit'
+        call RabbitInit()
+    endif
+
     redraw
+endfunction
+
+""""""""
+" rabbit
+"
+
+function RabbitInit()
+    while 1
+        let column = Random() % g:WIDTH        
+        let line   = Random() % g:HEIGHT
+
+        let char = GetCh(line, column)
+
+        if char == ' '
+            let g:rabbit = [line, column]
+            break
+        endif
+
+    endwhile
+    
+endfunction
+
+function RabbitDraw()
+    call PutCh(g:rabbit[0], g:rabbit[1], g:RABBIT)
 endfunction
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " MAIN 
 "
+
+echo "SNAKE GAME IN PURE VIMSCRIPT"
+sleep 1
 call SnakeInit()
+call MainLoop(0)
+call RabbitInit()
 
 
 nmap <silent> i :let direction = 'up'<CR>
