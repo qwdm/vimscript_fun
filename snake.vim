@@ -26,6 +26,17 @@ function FillSpaces()
     endfor
 endfunction
 
+function! GetNSpaces(n)
+    let n = a:n
+
+    function! ToSpace(x)
+        return ' '
+    endfunction
+
+    return join(map(range(n), 'ToSpace(v:val)'), '')
+endfunction
+
+
 function DrawBorder()
     for pos in range(1, g:WIDTH)
         call PutCh(1, pos, g:BORDER)
@@ -57,6 +68,8 @@ function PutCh(line, column, char)
     execute "normal! s" . char . "\e"
 
 endfunction
+
+
 
 """""""""""""""""""""""""""""""""""
 "" RANDOM
